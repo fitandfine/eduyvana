@@ -25,6 +25,7 @@
     h1 {
       font-size: 2.5rem;
       color: #00adb5;
+      animation: fadeIn 1.5s ease-in-out;
     }
     h2 {
       font-size: 1.3rem;
@@ -36,9 +37,12 @@
       background: #0f3460;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
       margin-bottom: 20px;
-      transition: all 0.3s ease-in-out;
+      transition: all 0.4s ease-in-out;
+    }
+    .hidden {
+      display: none;
     }
     .button {
       background-color: #00adb5;
@@ -66,23 +70,10 @@
       background: #16213e;
       color: #ffffff;
       font-size: 1rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
     textarea::placeholder {
       color: #e0e0e0;
-    }
-    .word-button {
-      display: inline-block;
-      margin: 5px;
-      padding: 8px 12px;
-      background: #00adb5;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.3s ease-in-out;
-    }
-    .word-button:hover {
-      background: #028c9e;
     }
     .popup {
       display: none;
@@ -94,7 +85,7 @@
       color: #ffffff;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
       z-index: 1000;
       max-width: 400px;
       text-align: center;
@@ -114,16 +105,13 @@
       font-size: 0.8rem;
       color: #00adb5;
     }
-    .hidden {
-      display: none;
-    }
-    .expandable {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.5s ease-in-out;
-    }
-    .expandable.active {
-      max-height: 100vh;
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
     }
     @media screen and (max-width: 768px) {
       h1 {
@@ -147,8 +135,32 @@
     <button class="button" onclick="toggleHelp()">Help</button>
   </div>
 
+  <!-- Read Aloud Section -->
+  <div class="container hidden" id="readAloudSection">
+    <textarea id="readAloudInput" placeholder="Enter text to read aloud"></textarea>
+    <label for="voiceLang">Select Language/Accent:</label>
+    <select id="voiceLang">
+      <option value="en-US">English (US)</option>
+      <option value="en-GB">English (UK)</option>
+      <option value="pt-BR">Portuguese (Brazil)</option>
+      <option value="pt-PT">Portuguese (Portugal)</option>
+    </select>
+    <div>
+      <label for="rate">Speed:</label>
+      <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+    </div>
+    <div>
+      <label for="volume">Volume:</label>
+      <input type="range" id="volume" min="0" max="1" value="1" step="0.1">
+    </div>
+    <button class="button" onclick="speakText()">Start Reading</button>
+    <button class="button" onclick="pauseOrResume()">Pause/Resume</button>
+    <button class="button" onclick="stopReading()">Stop</button>
+    <button class="button" onclick="goBack()">Back to Menu</button>
+  </div>
+
   <!-- Reading Assistant Section -->
-  <div class="container expandable hidden" id="readingAssistantSection">
+  <div class="container hidden" id="readingAssistantSection">
     <textarea id="assistantInput" placeholder="Paste text to analyze"></textarea>
     <label for="dictionarySelect">Select Dictionary:</label>
     <select id="dictionarySelect">
@@ -160,14 +172,8 @@
     <button class="button" onclick="goBack()">Back to Menu</button>
   </div>
 
-  <!-- Word Definition Popup -->
-  <div class="popup" id="definitionPopup">
-    <p id="popupContent"></p>
-    <button onclick="closePopup()">Close</button>
-  </div>
-
   <!-- Translate Section -->
-  <div class="container expandable hidden" id="translateSection">
+  <div class="container hidden" id="translateSection">
     <textarea id="translateInput" placeholder="Enter text to translate"></textarea>
     <textarea id="translateOutput" readonly placeholder="Translation will appear here"></textarea>
     <select id="translateLang">
@@ -178,28 +184,66 @@
     <button class="button" onclick="goBack()">Back to Menu</button>
   </div>
 
+  <!-- Word Definition Popup -->
+  <div class="popup" id="definitionPopup">
+    <p id="popupContent"></p>
+    <button onclick="closePopup()">Close</button>
+  </div>
+
   <footer>
     Developed with love by ANUP at RandomSkatePress, NZ.
   </footer>
 
   <script>
     const synth = window.speechSynthesis;
+    let utterance;
+    let isPaused = false;
 
     function toggleMode(mode) {
       document.querySelectorAll('.container').forEach(container => container.classList.add('hidden'));
-      document.querySelectorAll('.expandable').forEach(el => el.classList.remove('active'));
-      const section = document.getElementById(`${mode}Section`);
-      section.classList.remove('hidden');
-      section.classList.add('active');
+      document.getElementById(`${mode}Section`).classList.remove('hidden');
     }
 
     function goBack() {
       document.querySelectorAll('.container').forEach(container => container.classList.add('hidden'));
-      document.querySelectorAll('.expandable').forEach(el => el.classList.remove('active'));
       document.getElementById('mainMenu').classList.remove('hidden');
     }
 
-    function processAssistantText() {
+    function speakText() {
+      const text = document.getElementById('readAloudInput').value.trim();
+      const lang = document.getElementById('voiceLang').value;
+      const rate = parseFloat(document.getElementById('rate').value);
+      const volume = parseFloat(document.getElementById('volume').value);
+
+      if (!text) {
+        alert('Please enter text to read aloud.');
+        return;
+      }
+
+      utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      utterance.rate = rate;
+      utterance.volume = volume;
+
+      synth.speak(utterance);
+    }
+
+    function pauseOrResume() {
+      if (isPaused) {
+        synth.resume();
+        isPaused = false;
+      } else {
+        synth.pause();
+        isPaused = true;
+      }
+    }
+
+    function stopReading() {
+      synth.cancel();
+      isPaused = false;
+    }
+
+    async function processAssistantText() {
       const input = document.getElementById('assistantInput').value.trim();
       const dictionary = document.getElementById('dictionarySelect').value;
       const outputDiv = document.getElementById('assistantOutput');
@@ -233,27 +277,18 @@
     }
 
     async function fetchWordDefinition(word, dictionary) {
-  try {
-    // Determine the language for the API query based on dictionary selection
-    const lang = dictionary === 'en' ? 'en' : 'pt';
-    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${word}`);
-    const data = await response.json();
+      try {
+        const lang = dictionary === 'en' ? 'en' : 'pt';
+        const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${word}`);
+        const data = await response.json();
 
-    // Handle cases where definitions may not exist
-    const definition =
-      data[0]?.meanings[0]?.definitions[0]?.definition ||
-      'Definition not found.';
-
-    // Display the definition in a popup
-    showPopup(`Word: ${word}\nDefinition: ${definition}`);
-
-    // Speak the word using the appropriate language
-    speakWord(word, dictionary);
-  } catch (error) {
-    // Show an error message for failed API calls
-    showPopup(`Error fetching definition for "${word}" in ${dictionary === 'en' ? 'English' : 'Portuguese'}.`);
-  }
-}
+        const definition = data[0]?.meanings[0]?.definitions[0]?.definition || 'Definition not found.';
+        showPopup(`Word: ${word}\nDefinition: ${definition}`);
+        speakWord(word, dictionary);
+      } catch (error) {
+        showPopup(`Error fetching definition for "${word}" in ${dictionary === 'en' ? 'English' : 'Portuguese'}.`);
+      }
+    }
 
     function speakSentence(sentence) {
       const utterance = new SpeechSynthesisUtterance(sentence);
@@ -268,7 +303,7 @@
       synth.speak(utterance);
     }
 
-    function translateText() {
+    async function translateText() {
       const input = document.getElementById('translateInput').value.trim();
       const targetLang = document.getElementById('translateLang').value;
 
@@ -277,14 +312,13 @@
         return;
       }
 
-      fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(input)}&langpair=${targetLang === 'en' ? 'pt' : 'en'}|${targetLang}`)
-        .then(response => response.json())
-        .then(data => {
-          document.getElementById('translateOutput').value = data.responseData.translatedText;
-        })
-        .catch(() => {
-          alert('Error translating text. Please try again.');
-        });
+      try {
+        const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(input)}&langpair=${targetLang === 'en' ? 'pt' : 'en'}|${targetLang}`);
+        const data = await response.json();
+        document.getElementById('translateOutput').value = data.responseData.translatedText;
+      } catch (error) {
+        alert('Error translating text. Please try again.');
+      }
     }
 
     function showPopup(content) {
