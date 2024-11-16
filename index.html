@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eduyvana: Read, Learn, Translate</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: #ffffff;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #00adb5;
+    }
+    h2 {
+      font-size: 1.3rem;
+      color: #e0e0e0;
+    }
+    .container {
+      width: 100%;
+      max-width: 700px;
+      background: #0f3460;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      margin-bottom: 20px;
+      transition: all 0.3s ease-in-out;
+    }
+    .button {
+      background-color: #00adb5;
+      color: #ffffff;
+      border: none;
+      padding: 10px 15px;
+      font-size: 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px 0;
+      width: 100%;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    .button:hover {
+      transform: scale(1.05);
+      background-color: #028c9e;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      resize: none;
+      background: #16213e;
+      color: #ffffff;
+      font-size: 1rem;
+    }
+    textarea::placeholder {
+      color: #e0e0e0;
+    }
+    .word-button {
+      display: inline-block;
+      margin: 5px;
+      padding: 8px 12px;
+      background: #00adb5;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s ease-in-out;
+    }
+    .word-button:hover {
+      background: #028c9e;
+    }
+    .popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #0f3460;
+      color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      max-width: 400px;
+      text-align: center;
+    }
+    .popup button {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background: #00adb5;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #00adb5;
+    }
+    .hidden {
+      display: none;
+    }
+    .expandable {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease-in-out;
+    }
+    .expandable.active {
+      max-height: 100vh;
+    }
+    @media screen and (max-width: 768px) {
+      h1 {
+        font-size: 2rem;
+      }
+      textarea {
+        height: 100px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Eduyvana: Read, Learn, Translate</h1>
+  <h2>Unlock your potential in English and Portuguese</h2>
+
+  <!-- Main Menu -->
+  <div class="container" id="mainMenu">
+    <button class="button" onclick="toggleMode('readAloud')">Read Aloud</button>
+    <button class="button" onclick="toggleMode('readingAssistant')">Reading Assistant</button>
+    <button class="button" onclick="toggleMode('translate')">Translate</button>
+    <button class="button" onclick="toggleHelp()">Help</button>
+  </div>
+
+  <!-- Reading Assistant Section -->
+  <div class="container expandable hidden" id="readingAssistantSection">
+    <textarea id="assistantInput" placeholder="Paste text to analyze"></textarea>
+    <label for="dictionarySelect">Select Dictionary:</label>
+    <select id="dictionarySelect">
+      <option value="en">English</option>
+      <option value="pt">Portuguese</option>
+    </select>
+    <button class="button" onclick="processAssistantText()">Analyze</button>
+    <div id="assistantOutput"></div>
+    <button class="button" onclick="goBack()">Back to Menu</button>
+  </div>
+
+  <!-- Word Definition Popup -->
+  <div class="popup" id="definitionPopup">
+    <p id="popupContent"></p>
+    <button onclick="closePopup()">Close</button>
+  </div>
+
+  <!-- Translate Section -->
+  <div class="container expandable hidden" id="translateSection">
+    <textarea id="translateInput" placeholder="Enter text to translate"></textarea>
+    <textarea id="translateOutput" readonly placeholder="Translation will appear here"></textarea>
+    <select id="translateLang">
+      <option value="en">Translate to English</option>
+      <option value="pt">Translate to Portuguese</option>
+    </select>
+    <button class="button" onclick="translateText()">Translate</button>
+    <button class="button" onclick="goBack()">Back to Menu</button>
+  </div>
+
+  <footer>
+    Developed with love by ANUP at RandomSkatePress, NZ.
+  </footer>
+
+  <script>
+    const synth = window.speechSynthesis;
+
+    function toggleMode(mode) {
+      document.querySelectorAll('.container').forEach(container => container.classList.add('hidden'));
+      document.querySelectorAll('.expandable').forEach(el => el.classList.remove('active'));
+      const section = document.getElementById(`${mode}Section`);
+      section.classList.remove('hidden');
+      section.classList.add('active');
+    }
+
+    function goBack() {
+      document.querySelectorAll('.container').forEach(container => container.classList.add('hidden'));
+      document.querySelectorAll('.expandable').forEach(el => el.classList.remove('active'));
+      document.getElementById('mainMenu').classList.remove('hidden');
+    }
+
+    function processAssistantText() {
+      const input = document.getElementById('assistantInput').value.trim();
+      const dictionary = document.getElementById('dictionarySelect').value;
+      const outputDiv = document.getElementById('assistantOutput');
+      outputDiv.innerHTML = '';
+
+      if (!input) {
+        alert('Please enter text to analyze.');
+        return;
+      }
+
+      const sentences = input.match(/[^.!?]+[.!?]/g) || [input];
+      sentences.forEach(sentence => {
+        const sentenceDiv = document.createElement('div');
+        sentenceDiv.classList.add('sentence');
+
+        const playButton = document.createElement('button');
+        playButton.textContent = '🔊';
+        playButton.onclick = () => speakSentence(sentence);
+        sentenceDiv.appendChild(playButton);
+
+        sentence.split(/\s+/).forEach(word => {
+          const wordButton = document.createElement('button');
+          wordButton.classList.add('word-button');
+          wordButton.textContent = word;
+          wordButton.onclick = () => fetchWordDefinition(word, dictionary);
+          sentenceDiv.appendChild(wordButton);
+        });
+
+        outputDiv.appendChild(sentenceDiv);
+      });
+    }
+
+    async function fetchWordDefinition(word, dictionary) {
+  try {
+    // Determine the language for the API query based on dictionary selection
+    const lang = dictionary === 'en' ? 'en' : 'pt';
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${word}`);
+    const data = await response.json();
+
+    // Handle cases where definitions may not exist
+    const definition =
+      data[0]?.meanings[0]?.definitions[0]?.definition ||
+      'Definition not found.';
+
+    // Display the definition in a popup
+    showPopup(`Word: ${word}\nDefinition: ${definition}`);
+
+    // Speak the word using the appropriate language
+    speakWord(word, dictionary);
+  } catch (error) {
+    // Show an error message for failed API calls
+    showPopup(`Error fetching definition for "${word}" in ${dictionary === 'en' ? 'English' : 'Portuguese'}.`);
+  }
+}
+
+    function speakSentence(sentence) {
+      const utterance = new SpeechSynthesisUtterance(sentence);
+      utterance.lang = 'en-US';
+      synth.speak(utterance);
+    }
+
+    function speakWord(word, dictionary) {
+      const lang = dictionary === 'en' ? 'en-US' : 'pt-BR';
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = lang;
+      synth.speak(utterance);
+    }
+
+    function translateText() {
+      const input = document.getElementById('translateInput').value.trim();
+      const targetLang = document.getElementById('translateLang').value;
+
+      if (!input) {
+        alert('Please enter text to translate.');
+        return;
+      }
+
+      fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(input)}&langpair=${targetLang === 'en' ? 'pt' : 'en'}|${targetLang}`)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('translateOutput').value = data.responseData.translatedText;
+        })
+        .catch(() => {
+          alert('Error translating text. Please try again.');
+        });
+    }
+
+    function showPopup(content) {
+      const popup = document.getElementById('definitionPopup');
+      document.getElementById('popupContent').textContent = content;
+      popup.style.display = 'block';
+    }
+
+    function closePopup() {
+      document.getElementById('definitionPopup').style.display = 'none';
+    }
+
+    function toggleHelp() {
+      alert('Help: Use Reading Assistant to analyze text, get word definitions, and listen to sentences.');
+    }
+  </script>
+</body>
+</html>
